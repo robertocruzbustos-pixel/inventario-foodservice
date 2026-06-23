@@ -23,7 +23,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = "default-app-id";
 
-// --- UTILIDAD DE COMPRESIÓN DE IMÁGENES (Para artículos) ---
+// --- UTILIDAD DE COMPRESIÓN DE IMÁGENES ---
 const compressImage = (file, maxWidth = 800, quality = 0.7) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -53,6 +53,17 @@ const compressImage = (file, maxWidth = 800, quality = 0.7) => {
 const CATEGORIAS = ['Equipamiento', 'Bazar / Vajilla', 'Utensilios de Cocina'];
 
 export default function CateringInventory() {
+  // --- INYECCIÓN BLINDADA DE TAILWIND CSS ---
+  // Esto obliga a la app a tener diseño sin importar la configuración de Vercel
+  useEffect(() => {
+    if (!document.getElementById('tailwind-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'tailwind-cdn';
+      script.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(script);
+    }
+  }, []);
+
   const [user, setUser] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +165,9 @@ export default function CateringInventory() {
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-sm">
           <ChefHat size={64} className="mx-auto text-emerald-500 mb-4" />
           <h1 className="text-2xl font-bold text-slate-100 mb-6">Inventario FoodService</h1>
-          <button onClick={handleGoogleLogin} className="w-full py-3 bg-white text-slate-900 rounded-xl font-bold">Iniciar con Google</button>
+          <button onClick={handleGoogleLogin} className="w-full py-3 bg-white hover:bg-gray-200 transition-colors text-slate-900 rounded-xl font-bold flex items-center justify-center gap-2">
+             Continuar con Google
+          </button>
         </div>
       </div>
     );
@@ -169,36 +182,59 @@ export default function CateringInventory() {
           <h1 className="text-xl font-bold text-slate-100">Inventario <br/><span className="text-emerald-500">FoodService</span></h1>
         </div>
         <nav className="flex-1 p-4 space-y-2">
-          <button onClick={() => setActiveTab('dashboard')} className="w-full text-left p-3 rounded-lg hover:bg-slate-800">Dashboard</button>
-          <button onClick={() => setActiveTab('inventario')} className="w-full text-left p-3 rounded-lg hover:bg-slate-800">Catálogo</button>
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full text-left p-3 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-emerald-600/20 text-emerald-500' : 'hover:bg-slate-800'}`}>Panel de Control</button>
+          <button onClick={() => setActiveTab('inventario')} className={`w-full text-left p-3 rounded-lg transition-colors ${activeTab === 'inventario' ? 'bg-emerald-600/20 text-emerald-500' : 'hover:bg-slate-800'}`}>Catálogo</button>
         </nav>
-        <button onClick={handleLogout} className="p-4 border-t border-slate-800 text-sm text-slate-400">Cerrar Sesión</button>
+        <button onClick={handleLogout} className="p-4 border-t border-slate-800 text-sm text-slate-400 hover:text-rose-500 transition-colors flex items-center justify-center gap-2">
+           <LogOut size={16} /> Cerrar Sesión
+        </button>
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <header className="h-16 flex items-center justify-between px-6 bg-slate-900 border-b border-slate-800">
-          <h2 className="font-semibold">{activeTab === 'dashboard' ? 'Panel de Control' : 'Catálogo'}</h2>
-          <button onClick={() => handleOpenModal()} className="bg-emerald-600 px-4 py-2 rounded-lg text-sm">+ Nuevo</button>
+          <h2 className="font-semibold text-lg flex items-center gap-2">
+             <span className="md:hidden text-emerald-500"><ChefHat size={20}/></span>
+             {activeTab === 'dashboard' ? 'Panel de Control' : 'Catálogo'}
+          </h2>
+          <button onClick={() => handleOpenModal()} className="bg-emerald-600 hover:bg-emerald-500 transition-colors px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+             <Plus size={16} /> Nuevo
+          </button>
         </header>
-        <div className="flex-1 overflow-y-auto p-6">
+        
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6">
           {activeTab === 'dashboard' ? (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                   <p className="text-slate-400">Total Artículos</p>
-                   <p className="text-3xl font-bold">{items.length}</p>
+                <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-lg">
+                   <p className="text-slate-400 mb-2 font-medium">Total Artículos</p>
+                   <p className="text-4xl font-bold text-slate-100">{items.length}</p>
+                </div>
+                <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-lg">
+                   <p className="text-slate-400 mb-2 font-medium">Alertas de Stock</p>
+                   <p className="text-4xl font-bold text-rose-500">{itemsEnAlerta.length}</p>
                 </div>
              </div>
           ) : (
              <div className="space-y-4">
                {filteredItems.map(i => (
-                 <div key={i.id} className="bg-slate-900 p-4 rounded-lg flex justify-between items-center border border-slate-800">
-                   <div>
-                     <p className="font-bold">{i.nombre}</p>
-                     <p className="text-xs text-slate-500">{i.categoria}</p>
+                 <div key={i.id} className="bg-slate-900 p-4 rounded-xl flex justify-between items-center border border-slate-800 shadow-sm hover:border-emerald-500/50 transition-colors">
+                   <div className="flex items-center gap-4">
+                     {i.fotoBase64 ? (
+                        <img src={i.fotoBase64} alt={i.nombre} className="w-12 h-12 rounded object-cover border border-slate-700" />
+                     ) : (
+                        <div className="w-12 h-12 rounded bg-slate-800 flex items-center justify-center text-slate-500"><ImageIcon size={20}/></div>
+                     )}
+                     <div>
+                       <p className="font-bold text-slate-200">{i.nombre}</p>
+                       <p className="text-xs text-slate-500 mt-1">{i.categoria}</p>
+                     </div>
                    </div>
-                   <div className="flex gap-2">
-                     <button onClick={() => handleOpenModal(i)}><Edit size={16}/></button>
-                     <button onClick={() => handleDelete(i.id)}><Trash2 size={16} className="text-rose-500"/></button>
+                   <div className="flex items-center gap-4">
+                     <div className="text-right hidden sm:block mr-4">
+                        <p className="text-xs text-slate-500">Stock</p>
+                        <p className={`font-bold ${Number(i.cantidad) <= Number(i.stockMinimo) ? 'text-rose-500' : 'text-slate-200'}`}>{i.cantidad}</p>
+                     </div>
+                     <button onClick={() => handleOpenModal(i)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"><Edit size={16} className="text-blue-400"/></button>
+                     <button onClick={() => handleDelete(i.id)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"><Trash2 size={16} className="text-rose-500"/></button>
                    </div>
                  </div>
                ))}
@@ -207,17 +243,60 @@ export default function CateringInventory() {
         </div>
       </main>
 
-      {/* Modal ABM simplificado */}
+      {/* Navegación móvil */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex justify-around p-3 z-40">
+          <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center ${activeTab === 'dashboard' ? 'text-emerald-500' : 'text-slate-500'}`}>
+             <LayoutDashboard size={20} /> <span className="text-[10px] mt-1">Panel</span>
+          </button>
+          <button onClick={() => setActiveTab('inventario')} className={`flex flex-col items-center ${activeTab === 'inventario' ? 'text-emerald-500' : 'text-slate-500'}`}>
+             <Package size={20} /> <span className="text-[10px] mt-1">Catálogo</span>
+          </button>
+          <button onClick={handleLogout} className="flex flex-col items-center text-slate-500 hover:text-rose-500">
+             <LogOut size={20} /> <span className="text-[10px] mt-1">Salir</span>
+          </button>
+      </nav>
+
+      {/* Modal ABM */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-           <form onSubmit={handleSave} className="bg-slate-900 p-6 rounded-xl w-full max-w-sm border border-slate-800 space-y-4">
-             <input type="text" placeholder="Nombre" required value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-slate-950 p-3 rounded" />
-             <select value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} className="w-full bg-slate-950 p-3 rounded">
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+           <form onSubmit={handleSave} className="bg-slate-900 p-6 rounded-2xl w-full max-w-sm border border-slate-700 shadow-2xl space-y-4">
+             <h3 className="text-xl font-bold text-slate-100 mb-4">{editingItem ? 'Editar Artículo' : 'Nuevo Artículo'}</h3>
+             
+             {/* Componente de Imagen */}
+             <div className="flex justify-center mb-4">
+                <label className="relative cursor-pointer group">
+                  {formData.fotoBase64 ? (
+                     <img src={formData.fotoBase64} className="w-24 h-24 rounded-xl object-cover border-2 border-slate-700 group-hover:border-emerald-500 transition-colors" alt="preview" />
+                  ) : (
+                     <div className="w-24 h-24 rounded-xl bg-slate-950 border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 group-hover:border-emerald-500 transition-colors">
+                        <Camera size={24} className="mb-1" />
+                        <span className="text-[10px]">Añadir Foto</span>
+                     </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+             </div>
+
+             <input type="text" placeholder="Nombre del artículo" required value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-3 rounded-lg focus:border-emerald-500 outline-none" />
+             <select value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-3 rounded-lg focus:border-emerald-500 outline-none">
                {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
              </select>
-             <div className="flex gap-2">
-               <button type="button" onClick={handleCloseModal} className="w-full py-2 border border-slate-700">Cancelar</button>
-               <button type="submit" className="w-full py-2 bg-emerald-600">Guardar</button>
+             <div className="flex gap-4">
+                <div className="flex-1">
+                   <label className="text-xs text-slate-500 mb-1 block">Cantidad</label>
+                   <input type="number" required value={formData.cantidad} onChange={e => setFormData({...formData, cantidad: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500" />
+                </div>
+                <div className="flex-1">
+                   <label className="text-xs text-slate-500 mb-1 block">Alerta Mínima</label>
+                   <input type="number" required value={formData.stockMinimo} onChange={e => setFormData({...formData, stockMinimo: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500" />
+                </div>
+             </div>
+             
+             <div className="flex gap-3 pt-4 mt-2 border-t border-slate-800">
+               <button type="button" onClick={handleCloseModal} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition-colors">Cancelar</button>
+               <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex justify-center items-center">
+                  {isSaving ? 'Guardando...' : 'Guardar'}
+               </button>
              </div>
            </form>
         </div>
